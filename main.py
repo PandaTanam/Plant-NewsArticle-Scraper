@@ -1,40 +1,65 @@
-import requests
-from bs4 import BeautifulSoup
-import firebase_admin
-from firebase_admin import firestore
-from datetime import datetime
+# News Scraper
 
-firebase_admin.initialize_app()
-db = firestore.client()
+This project is designed to scrape the latest news articles related to plant care and management from Google News. The scraper is implemented as a Google Cloud Function that is triggered by Pub/Sub messages. The scraped data is stored in a Firestore database for easy access and retrieval.
 
-def scrape_google_news():
-    keyword = "merawat+menanam"
-    url = f"https://news.google.com/search?q={keyword}"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    results = soup.find_all("article", class_="IFHyqb DeXSAc")
+## Features
 
-    news_collection_ref = db.collection('news')
-    docs = news_collection_ref.stream()
-    for doc in docs:
-        doc.reference.delete()
+- Scrapes the latest news articles based on a specified keyword.
+- Stores the news articles in a Firestore database.
+- Automatically deletes old news articles before adding new ones to keep the database updated.
+- Triggered by Google Cloud Pub/Sub for automated scraping.
 
-    for result in results:
-        source = result.find("div", class_="vr1PYe").text
-        title = result.find("a", class_="JtKRv").text
-        link = result.find("a")['href'].replace("./", "https://news.google.com/")
-        image = "https://news.google.com" + result.find("img", class_="Quavad")['src']
-        
-        news_data = {
-            'title': title,
-            'source': source,
-            'link': link,
-            'image': image,
-            'timestamp': datetime.now().strftime('%Y/%m/%d - %H:%M')
-        }
+## Technologies Used
 
-        news_collection_ref.add(news_data)
-        print(f"Saved: {title} from {source} - {link} - {image}")
+- Python: The programming language used for the scraper.
+- Requests: For making HTTP requests to fetch web pages.
+- BeautifulSoup: For parsing HTML and extracting data from web pages.
+- Firebase Admin SDK: For interacting with Firestore to store news articles.
+- Google Cloud Firestore: A NoSQL document database for storing news data.
+- Google Cloud Functions: For deploying the scraper as a serverless function.
 
-if __name__ == "__main__":
-    scrape_google_news()
+## Getting Started
+
+### Prerequisites
+
+- Python 3.6 or higher
+- Google Cloud account with Firestore and Cloud Functions enabled
+- Firebase Admin SDK credentials
+- Google Cloud SDK (for local testing and deployment)
+
+### Usage
+
+Once deployed, the function will automatically scrape the latest news articles related to "merawat menanam" (plant care and management) whenever it is triggered by a Pub/Sub message.
+
+### Deployment
+
+To deploy the scraper as a Google Cloud Function, follow these steps:
+
+1. **Deploy the Function:**
+   Use the Google Cloud SDK to deploy the function:
+    ```bash
+    gcloud functions deploy news_pubsub
+        --runtime python39
+        --trigger-topic YOUR_PUBSUB_TOPIC_NAME
+        --entry-point news_pubsub
+        --project YOUR_PROJECT_ID
+        --region YOUR_REGION
+    ```
+                                                   
+2. **Set Up Pub/Sub Trigger:**
+   Create a Pub/Sub topic that will trigger the function. You can publish messages to this topic to invoke the scraper.
+
+### Scraping Logic
+
+- The scraper fetches news articles from Google News using the specified keyword.
+- It parses the HTML to extract the title, source, link, and image of each article.
+- Before adding new articles, it deletes any existing articles in the Firestore collection to ensure the database is up-to-date.
+
+## Firestore Structure
+
+The scraped news articles are stored in a Firestore collection named `news`. Each document in this collection contains the following fields:
+- `title`: The title of the news article.
+- `source`: The source of the news article.
+- `link`: The URL link to the news article.
+- `image`: The URL of the article's image.
+- `timestamp`: The time when the article was scraped.
