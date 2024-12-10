@@ -1,3 +1,5 @@
+import base64
+import functions_framework
 import requests
 from bs4 import BeautifulSoup
 import firebase_admin
@@ -36,5 +38,7 @@ def scrape_google_news():
         news_collection_ref.add(news_data)
         print(f"Saved: {title} from {source} - {link} - {image}")
 
-if __name__ == "__main__":
+@functions_framework.cloud_event
+def news_pubsub(cloud_event):
+    print("Received a message from Pub/Sub.")
     scrape_google_news()
